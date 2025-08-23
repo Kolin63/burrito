@@ -52,3 +52,6 @@ vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI" }, {
   pattern = "*.md",
   callback = burrito_check
 })
+
+-- make a user command if the wrapping somehow got outdated
+vim.api.nvim_create_user_command("Burrito", burrito_check, {})
