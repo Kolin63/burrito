@@ -11,6 +11,7 @@ function burrito_check()
     -- check line length
     if #line > 80 then
 
+      -- split line into multiple 80-character lines
       local new_lines = {}
       repeat
         table.insert(new_lines, line:sub(1, 80))
@@ -18,7 +19,10 @@ function burrito_check()
         lines_amt = lines_amt + 1
       until #line == 0
 
+      -- replace long line with 80 character one, and insert other lines
       vim.api.nvim_buf_set_lines(0, i-1, i, false, new_lines)
+
+      -- change cursor position to the next line
       local old_cursor_pos = vim.api.nvim_win_get_cursor(0)
       vim.api.nvim_win_set_cursor(0, { old_cursor_pos[1] + #new_lines - 1, 1 })
     end
