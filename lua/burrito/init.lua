@@ -14,9 +14,22 @@ function burrito_check()
       -- split line into multiple 80-character lines
       local new_lines = {}
       repeat
-        table.insert(new_lines, line:sub(1, 80))
-        line = line:sub(81)
+        local break_col = 80
+
+        -- smart wrapping with words
+        for col=80, 1, -1 do
+          if line:sub(col, col) == ' ' then
+            break_col = col
+            goto split_line
+          end
+        end
+
+        -- split the line
+        ::split_line::
+        table.insert(new_lines, line:sub(1, break_col))
+        line = line:sub(break_col + 1)
         lines_amt = lines_amt + 1
+
       until #line == 0
 
       -- replace long line with 80 character one, and insert other lines
@@ -24,7 +37,11 @@ function burrito_check()
 
       -- change cursor position to the next line
       local old_cursor_pos = vim.api.nvim_win_get_cursor(0)
-      vim.api.nvim_win_set_cursor(0, { old_cursor_pos[1] + #new_lines - 1, 1 })
+      vim.api.nvim_win_set_cursor(0, { 
+        old_cursor_pos[1] + #new_lines - 1, -- row
+        #new_lines[#new_lines]              -- column
+      })
+
     end
   end
 end
