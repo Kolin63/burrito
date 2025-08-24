@@ -1,3 +1,72 @@
+-- returns true if the char is whitespace
+function is_whitespace(char)
+  if string.byte(char:sub(1, 1)) <= 32 then
+    return true
+  else
+    return false
+  end
+end
+
+-- returns an int of how much to indent the line after given line
+function next_indent(line)
+
+  non_wrapping = { "* ", "- ", "> " }
+
+  -- check the line for each pattern
+  for _, pattern in ipairs(non_wrapping) do
+
+    -- how many chars have matched the pattern in the line
+    local chars_matched = 0
+
+    -- check each char in the line for the char in the pattern
+    for chari=1, #line, 1 do
+      char = line:sub(chari, chari)
+
+      -- whitespace, continue (as long as pattern hasn't started matching)
+      if is_whitespace(char) and chars_matched == 0 then
+        goto next_char
+      end
+
+      -- if the chars match, continue
+      if char == pattern:sub(chari, chari) then
+
+        chars_matched = chars_matched + 1
+
+        -- if all chars have been matched, return length of pattern
+        if chars_matched == #pattern then
+          return #pattern
+        end
+        -- otherwise, next char
+        goto next_char
+      end
+
+      -- otherwise, check the next pattern
+      goto next_pattern
+
+      ::next_char::
+    end
+    ::next_pattern::
+  end
+
+  return 0
+end
+
+-- returns true if given line starts with a non-wrapping charcter or substring
+function is_non_wrapping(line)
+  -- check if first char is whitespace
+  if is_whitespace(line:sub(1, 1)) then
+    return true
+  end
+
+  -- if it is a line that indents the next line, don't wrap it
+  if next_indent(line) > 0 then
+    return true
+  end
+
+  -- otherwise, return false and wrap it
+  return false
+end
+
 -- checks buffer for lines that need to be wrapped
 -- start_line: what line to start checking at
 function burrito_check(start_line)
