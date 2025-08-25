@@ -74,7 +74,8 @@ function burrito_check(start_line)
   local lines = vim.api.nvim_buf_get_lines(0, start_line - 1, -1, false)
 
   for i = start_line, #lines + start_line - 1 do
-    local line = lines[i - start_line + 1]
+    local linei = i - start_line + 1
+    local line = lines[linei]
 
     -- check line length for if it needs to be wrapped
     if #line > 80 then
@@ -112,18 +113,93 @@ function burrito_check(start_line)
 
       -- recurse
       burrito_check(i + 1)
+      return
 
     end
   end
+end
 
+-- checks buffer for lines that need to be joined
+-- start_line: what line to start checking at
+function burrito_check_join(start_line)
+  -- get all lines in buffer
+  local lines = vim.api.nvim_buf_get_lines(0, start_line - 1, -1, false)
+
+  for i = start_line, #lines + start_line - 1 do
+    local linei = i - start_line + 1
+    local line = lines[linei]
+
+    if #line <= 80 then
+      -- line is short, check if it can be joined with next line
+      local next_linei = linei + 1
+
+      -- out of bounds check
+      if next_linei > #lines then
+        goto check_next_line
+      end
+
+      local next_line = lines[next_linei]
+
+      if next_line == nil or #next_line == 0 or is_non_wrapping(next_line) then
+        goto check_next_line
+      end
+
+      if line == nil or #line == 0 or is_whitespace(line:sub(1, 1)) then
+        goto check_next_line
+      end
+
+      -- the lines can be joined, so join the lines
+      new_line = { line }
+
+      -- if a space needs to be appended to the end of the first line
+      if not is_whitespace(line:sub(#line)) then
+        new_line[1] = new_line[1] .. " "
+      end
+
+      -- add the next line to new line
+      new_line[1] = new_line[1] .. next_line
+
+      -- replace the line
+      vim.api.nvim_buf_set_lines(0, i-1, i+1, true, new_line)
+
+      -- recurse
+      burrito_check_join(i)
+      if #new_line[1] > 80 then
+        burrito_check(i)
+      end
+      return
+    end
+
+    ::check_next_line::
+  end
 end
 
 -- set the auto command to check the file for lines that need to be wrapped
--- whenever the file is changed
-vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI" }, {
+-- whenever the file is changed in insert mode
+vim.api.nvim_create_autocmd("TextChangedI", {
   pattern = "*.md",
   callback = function() burrito_check(1) end
 })
 
+-- set the auto command to check the file for lines that need to be wrapped
+-- whenever the file is changed out of insert mode
+vim.api.nvim_create_autocmd("TextChanged", {
+  pattern = "*.md",
+  callback = function() 
+    burrito_check(1) 
+    burrito_check_join(1)
+  end
+})
+
+-- set the auto command to check the file for lines that need to be wrapped
+-- whenever insert mode is left
+vim.api.nvim_create_autocmd("InsertLeave", {
+  pattern = "*.md",
+  callback = function() burrito_check_join(1) end
+})
+
 -- make a user command if the wrapping somehow got outdated
-vim.api.nvim_create_user_command("Burrito", function() burrito_check(1) end, {})
+vim.api.nvim_create_user_command("Burrito", function() 
+  burrito_check(1) 
+  burrito_check_join(1)
+end, {})
