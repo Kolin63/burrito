@@ -1,70 +1,154 @@
--- returns true if the char is whitespace
-function is_whitespace(char)
-  if string.byte(char:sub(1, 1)) <= 32 then
-    return true
-  else
-    return false
-  end
-end
+independent_patterns = { 
+  " {0,3}\\* *\\* *\\*",          -- Thematic Breaks
+  " {0,3}- *- *-",                -- Thematic Breaks
+  " {0,3}_ *_ *_",                -- Thematic Breaks
+  " {0,3}#{1,6} ",                -- ATX Headings
+  " {0,3}-+ *$",                  -- Setext Heading Underline
+  " {0,3}=+ *$",                  -- Setext Heading Underline
+  " *$",                          -- All Whitespace
+  " {4}",                         -- Indented Code Block
+  " {0,3}`{3}",                   -- Fenced Code Block
+  " {0,3}~{3}",                   -- Fenced Code Block
+  "[|:]",                         -- Tables
+}
 
--- returns an int of how much to indent the line after given line
-function next_indent(line)
+bottom_only_patterns = {
+  " +",                           -- Starts With Whitespace
+  " {0,3}>",                      -- Block Quote
+  " {0,3}[-+*] ",                 -- Bullet Lists
+  " {0,3}[0123456789]{1,9}[.)] ", -- Ordered Lists
+}
 
-  non_wrapping = { "* ", "- ", "> " }
+-- returns true if pattern was found
+function regex(input, pattern)
 
-  -- check the line for each pattern
-  for _, pattern in ipairs(non_wrapping) do
+  backslash = false
 
-    -- how many chars have matched the pattern in the line
-    local chars_matched = 0
+  surround = "" -- what is currently surrounding
 
-    -- check each char in the line for the char in the pattern
-    for chari=1, #line, 1 do
-      char = line:sub(chari, chari)
+  matching_chars = {} -- the char(s) that we are currently looking for
+  match_min = 0 -- minimum times to match the char (inclusive)
+  match_max = 0 -- maximum times to match the char (inclusive) -1 for infinite
 
-      -- whitespace, continue (as long as pattern hasn't started matching)
-      if is_whitespace(char) and chars_matched == 0 then
-        goto next_char
+  quantifier_found = false
+
+  for i = 1, #pattern, 1 do
+
+    char = pattern:sub(i, i)
+
+    is_literal = false
+    if backslash == true then is_literal = true end
+    if surround == "[" and char ~= "]" then is_literal = true end
+
+    if char == "\\" and is_literal == false then
+      backslash = true
+
+    elseif char == "^" and is_literal == false then
+      if i ~= 1 then
+        print("BURRITO: ERROR: ^ anchor must be in first character")
+      end
+      start_anchor = true
+    elseif char == "$" and is_literal == false then
+      if i ~= #pattern then
+        print("BURRITO: ERROR: $ anchor must be in last character")
+      end
+      return #input == 0
+
+    elseif char == "*" and is_literal == false then
+      match_min = 0
+      match_max = -1
+      quantifier_found = true
+
+    elseif char == "+" and is_literal == false then
+      match_min = 1
+      match_max = -1
+      quantifier_found = true
+
+    elseif char == "{" and surround == "" and is_literal == false then
+      surround = "{"
+      match_min = 0
+      match_max = -1
+    elseif char == "," and surround == "{" then
+      surround = "{,"
+      match_max = 0
+    elseif char == "}" and (surround == "{" or surround == "{,") then
+      surround = ""
+      quantifier_found = true
+
+    elseif surround == "{" then
+      match_min = (match_min .. char) + 0
+      match_max = match_min
+    elseif surround == "{," then
+      match_max = (match_max .. char) + 0
+
+    elseif char == "[" and surround == "" and is_literal == false then
+      surround = "["
+      match_min = 1
+      match_max = 1
+    elseif surround == "[" and not (char == "]" and is_literal == false) then
+      table.insert(matching_chars, char)
+
+    else
+      backslash = false
+      surround = ""
+      is_literal = false
+      if char ~= "]" then
+        table.insert(matching_chars, char)
       end
 
-      -- if the chars match, continue
-      if char == pattern:sub(chari, chari) then
+      -- if there is no quantifier following this char
+      next_char = pattern:sub(i + 1, i + 1)
+      if next_char ~= "^" and next_char ~= "$" and next_char ~= "*" 
+        and next_char ~= "+" and next_char ~= "{" then
 
-        chars_matched = chars_matched + 1
-
-        -- if all chars have been matched, return length of pattern
-        if chars_matched == #pattern then
-          return #pattern
-        end
-        -- otherwise, next char
-        goto next_char
+        match_min = 1
+        match_max = 1
+        quantifier_found = true
       end
-
-      -- otherwise, check the next pattern
-      goto next_pattern
-
-      ::next_char::
     end
-    ::next_pattern::
+
+    if quantifier_found then
+      inputi = 1
+      chars_found = 0
+
+      while true do
+        inputchar = input:sub(inputi, inputi)
+
+        for _, checkchar in ipairs(matching_chars) do
+          if inputchar == checkchar then
+            chars_found = chars_found + 1
+            goto char_found
+          end
+        end
+
+        goto non_match -- char wasn't found
+
+        ::char_found::
+
+        if inputi == match_max or inputi == #input then
+          goto non_match
+        end
+
+        inputi = inputi + 1
+      end
+
+      ::non_match::
+      if chars_found >= match_min then
+        input = input:sub(chars_found + 1)
+      else
+        return false
+      end
+
+      matching_chars = {}
+      match_min = 0
+      match_max = 0
+      quantifier_found = false
+
+    end
+
   end
 
-  return 0
-end
-
--- returns true if given line starts with a non-wrapping charcter or substring
-function is_non_wrapping(line)
-  -- check if first char is whitespace
-  if is_whitespace(line:sub(1, 1)) then
-    return true
-  end
-
-  -- if it is a line that indents the next line, don't wrap it
-  if next_indent(line) > 0 then
-    return true
-  end
-
-  -- otherwise, return false and wrap it
-  return false
+  return true
 end
 
 -- checks buffer for lines that need to be wrapped
@@ -77,45 +161,45 @@ function burrito_check(start_line)
     local linei = i - start_line + 1
     local line = lines[linei]
 
-    -- check line length for if it needs to be wrapped
-    if #line > 80 then
+    -- -- check line length for if it needs to be wrapped
+    -- if #line > 80 then
 
-      -- split line into two 80-character lines
-      local new_lines = {}
-      
-      -- the column at which the line is going to be broken
-      local break_col = 80
+    --   -- split line into two 80-character lines
+    --   local new_lines = {}
 
-      -- smart wrapping with words
-      for col=80, 1, -1 do
-        if line:sub(col, col) == ' ' then
-          break_col = col
-          goto split_line
-        end
-      end
+    --   -- the column at which the line is going to be broken
+    --   local break_col = 80
 
-      ::split_line::
-      new_lines[1] = line:sub(1, break_col)
-      new_lines[2] = line:sub(break_col + 1)
+    --   -- smart wrapping with words
+    --   for col=80, 1, -1 do
+    --     if line:sub(col, col) == ' ' then
+    --       break_col = col
+    --       goto split_line
+    --     end
+    --   end
 
-      -- calculate new cursor position
-      local cursor_pos = vim.api.nvim_win_get_cursor(0)
-      if cursor_pos[2] >= 80 then
-        cursor_pos[1] = cursor_pos[1] + 1
-        cursor_pos[2] = cursor_pos[2] - break_col + 1
-      end
+    --   ::split_line::
+    --   new_lines[1] = line:sub(1, break_col)
+    --   new_lines[2] = line:sub(break_col + 1)
 
-      -- replace long line with 80 character one and the new line
-      vim.api.nvim_buf_set_lines(0, i-1, i, true, new_lines)
+    --   -- calculate new cursor position
+    --   local cursor_pos = vim.api.nvim_win_get_cursor(0)
+    --   if cursor_pos[2] >= 80 then
+    --     cursor_pos[1] = cursor_pos[1] + 1
+    --     cursor_pos[2] = cursor_pos[2] - break_col + 1
+    --   end
 
-      -- change cursor position to the next line
-      vim.api.nvim_win_set_cursor(0, cursor_pos)
+    --   -- replace long line with 80 character one and the new line
+    --   vim.api.nvim_buf_set_lines(0, i-1, i, true, new_lines)
 
-      -- recurse
-      burrito_check(i + 1)
-      return
+    --   -- change cursor position to the next line
+    --   vim.api.nvim_win_set_cursor(0, cursor_pos)
 
-    end
+    --   -- recurse
+    --   burrito_check(i + 1)
+    --   return
+
+    -- end
   end
 end
 
@@ -129,62 +213,80 @@ function burrito_check_join(start_line)
     local linei = i - start_line + 1
     local line = lines[linei]
 
-    if #line <= 80 then
-      -- line is short, check if it can be joined with next line
-      local next_linei = linei + 1
-
-      -- out of bounds check
-      if next_linei > #lines then
-        goto check_next_line
+    for _, pattern in ipairs(independent_patterns) do
+      x = regex(line, pattern)
+      if x == true then
+        print(line .. " and " .. pattern .. ": " .. tostring(x))
+        goto stop_match_search
       end
-
-      local next_line = lines[next_linei]
-
-      if next_line == nil or #next_line == 0 or is_non_wrapping(next_line) then
-        goto check_next_line
-      end
-
-      if line == nil or #line == 0 or is_whitespace(line:sub(1, 1)) then
-        goto check_next_line
-      end
-
-      -- the lines can be joined, so join the lines
-      new_line = { line }
-
-      -- if a space needs to be appended to the end of the first line
-      if not is_whitespace(line:sub(#line)) then
-        new_line[1] = new_line[1] .. " "
-      end
-
-      -- add the next line to new line
-      new_line[1] = new_line[1] .. next_line
-
-      -- replace the line
-      vim.api.nvim_buf_set_lines(0, i-1, i+1, true, new_line)
-
-      -- recurse
-      burrito_check_join(i)
-      if #new_line[1] > 80 then
-        burrito_check(i)
-      end
-      return
     end
 
-    ::check_next_line::
+    for _, pattern in ipairs(bottom_only_patterns) do
+      x = regex(line, pattern)
+      if x == true then
+        print(line .. " and " .. pattern .. ": " .. tostring(x))
+        goto stop_match_search
+      end
+    end
+
+    ::stop_match_search::
+
+    -- if #line <= 80 then
+    --   -- line is short, check if it can be joined with next line
+    --   local next_linei = linei + 1
+
+    --   -- out of bounds check
+    --   if next_linei > #lines then
+    --     goto check_next_line
+    --   end
+
+    --   local next_line = lines[next_linei]
+
+    --   if next_line == nil or #next_line == 0 or is_non_wrapping(next_line) then
+    --     goto check_next_line
+    --   end
+
+    --   if line == nil or #line == 0 or is_whitespace(line:sub(1, 1)) then
+    --     goto check_next_line
+    --   end
+
+    --   -- the lines can be joined, so join the lines
+    --   new_line = { line }
+
+    --   -- if a space needs to be appended to the end of the first line
+    --   if not is_whitespace(line:sub(#line)) then
+    --     new_line[1] = new_line[1] .. " "
+    --   end
+
+    --   -- add the next line to new line
+    --   new_line[1] = new_line[1] .. next_line
+
+    --   -- replace the line
+    --   vim.api.nvim_buf_set_lines(0, i-1, i+1, true, new_line)
+
+    --   -- recurse
+    --   burrito_check_join(i)
+    --   if #new_line[1] > 80 then
+    --     burrito_check(i)
+    --   end
+    --   return
+    -- end
+
+    -- ::check_next_line::
   end
 end
 
 -- set the auto command to check the file for lines that need to be wrapped
 -- whenever the file is changed in insert mode
 vim.api.nvim_create_autocmd("TextChangedI", {
-  pattern = "*.md",
+  pattern = "*.test",
   callback = function() burrito_check(1) end
 })
 
 -- set the auto command to check the file for lines that need to be wrapped
 -- whenever the file is changed out of insert mode
 vim.api.nvim_create_autocmd("TextChanged", {
-  pattern = "*.md",
+  pattern = "*.test",
   callback = function() 
     burrito_check(1) 
     burrito_check_join(1)
@@ -194,7 +296,7 @@ vim.api.nvim_create_autocmd("TextChanged", {
 -- set the auto command to check the file for lines that need to be wrapped
 -- whenever insert mode is left
 vim.api.nvim_create_autocmd("InsertLeave", {
-  pattern = "*.md",
+  pattern = "*.test",
   callback = function() burrito_check_join(1) end
 })
 
