@@ -18,7 +18,6 @@ list_patterns = {
 }
 
 bottom_only_patterns = {
-  " +",                           -- Starts With Whitespace
   " {0,3}>",                      -- Block Quote
   list_patterns[1],               -- Bullet Lists
   list_patterns[2],               -- Ordered Lists

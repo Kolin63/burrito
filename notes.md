@@ -40,7 +40,6 @@ This is the list of markdown symbols and what type of line they relate to.
 * Lines after a list item line or block quote
 
 ### Bottom Only Lines
-* Any line that starts with whitespace
 * Block quote
 * List Items
 
