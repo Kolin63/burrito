@@ -32,7 +32,6 @@ This is the list of markdown symbols and what type of line they relate to.
 * ATX Headings (0-3 spaces, 1-6 hashtags, a space)
 * A setext heading underline
 * A line that is all whitespace or blank.
-* An indented code block
 * A fenced code block. The content of the fenced code block is also
   independent. Don't wrap code!
 * All lines of a table
@@ -60,3 +59,14 @@ tokens that will be available are:
 * * for 0 or more of
 * + for 1 or more of
 * \ as an escape character
+
+## Indent Behavior
+Differences between an indent at the start of a paragraph and an indent because
+of a list.
+```
+  Start of a paragraph.
+The body continues down here.
+
+* A bulleted list.
+  The body continues down here.
+```

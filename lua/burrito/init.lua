@@ -12,11 +12,16 @@ independent_patterns = {
   "[|:]",                         -- Tables
 }
 
+list_patterns = {
+  " {0,3}[-+*] ",                 -- Bullet Lists
+  " {0,3}[0123456789]{1,9}[.)] ", -- Ordered Lists
+}
+
 bottom_only_patterns = {
   " +",                           -- Starts With Whitespace
   " {0,3}>",                      -- Block Quote
-  " {0,3}[-+*] ",                 -- Bullet Lists
-  " {0,3}[0123456789]{1,9}[.)] ", -- Ordered Lists
+  list_patterns[1],               -- Bullet Lists
+  list_patterns[2],               -- Ordered Lists
 }
 
 -- returns true if pattern was found
@@ -151,9 +156,26 @@ function regex(input, pattern)
   return true
 end
 
+-- returns "normal", "independent", "top", or "bottom"
+function get_line_type(line)
+  for _, pattern in ipairs(independent_patterns) do
+    if regex(line, pattern) == true then
+      return "independent"
+    end
+  end
+
+  for _, pattern in ipairs(bottom_only_patterns) do
+    if regex(line, pattern) == true then
+      return "bottom"
+    end
+  end
+
+  return "normal"
+end
+
 -- checks buffer for lines that need to be wrapped
 -- start_line: what line to start checking at
-function burrito_check(start_line)
+function burrito_check_wrap(start_line)
   -- get all lines in buffer
   local lines = vim.api.nvim_buf_get_lines(0, start_line - 1, -1, false)
 
@@ -161,45 +183,45 @@ function burrito_check(start_line)
     local linei = i - start_line + 1
     local line = lines[linei]
 
-    -- -- check line length for if it needs to be wrapped
-    -- if #line > 80 then
+    -- check line length for if it needs to be wrapped
+    if #line > 80 then
 
-    --   -- split line into two 80-character lines
-    --   local new_lines = {}
+      -- split line into two 80-character lines
+      local new_lines = {}
 
-    --   -- the column at which the line is going to be broken
-    --   local break_col = 80
+      -- the column at which the line is going to be broken
+      local break_col = 80
 
-    --   -- smart wrapping with words
-    --   for col=80, 1, -1 do
-    --     if line:sub(col, col) == ' ' then
-    --       break_col = col
-    --       goto split_line
-    --     end
-    --   end
+      -- smart wrapping with words
+      for col=80, 1, -1 do
+        if line:sub(col, col) == ' ' then
+          break_col = col
+          goto split_line
+        end
+      end
 
-    --   ::split_line::
-    --   new_lines[1] = line:sub(1, break_col)
-    --   new_lines[2] = line:sub(break_col + 1)
+      ::split_line::
+      new_lines[1] = line:sub(1, break_col)
+      new_lines[2] = line:sub(break_col + 1)
 
-    --   -- calculate new cursor position
-    --   local cursor_pos = vim.api.nvim_win_get_cursor(0)
-    --   if cursor_pos[2] >= 80 then
-    --     cursor_pos[1] = cursor_pos[1] + 1
-    --     cursor_pos[2] = cursor_pos[2] - break_col + 1
-    --   end
+      -- calculate new cursor position
+      local cursor_pos = vim.api.nvim_win_get_cursor(0)
+      if cursor_pos[2] >= 80 then
+        cursor_pos[1] = cursor_pos[1] + 1
+        cursor_pos[2] = cursor_pos[2] - break_col + 1
+      end
 
-    --   -- replace long line with 80 character one and the new line
-    --   vim.api.nvim_buf_set_lines(0, i-1, i, true, new_lines)
+      -- replace long line with 80 character one and the new line
+      vim.api.nvim_buf_set_lines(0, i-1, i, true, new_lines)
 
-    --   -- change cursor position to the next line
-    --   vim.api.nvim_win_set_cursor(0, cursor_pos)
+      -- change cursor position to the next line
+      vim.api.nvim_win_set_cursor(0, cursor_pos)
 
-    --   -- recurse
-    --   burrito_check(i + 1)
-    --   return
+      -- recurse
+      burrito_check_wrap(i + 1)
+      return
 
-    -- end
+    end
   end
 end
 
@@ -213,74 +235,58 @@ function burrito_check_join(start_line)
     local linei = i - start_line + 1
     local line = lines[linei]
 
-    for _, pattern in ipairs(independent_patterns) do
-      x = regex(line, pattern)
-      if x == true then
-        print(line .. " and " .. pattern .. ": " .. tostring(x))
-        goto stop_match_search
-      end
+    local next_linei = linei + 1
+
+    -- out of bounds check
+    if next_linei > #lines then
+      goto check_next_line
     end
 
-    for _, pattern in ipairs(bottom_only_patterns) do
-      x = regex(line, pattern)
-      if x == true then
-        print(line .. " and " .. pattern .. ": " .. tostring(x))
-        goto stop_match_search
-      end
+    local next_line = lines[next_linei]
+
+    -- dont join with next line if:
+    -- line is long
+    if #line > 80 then goto check_next_line end
+    -- line is independent
+    line_type = get_line_type(line)
+    if line_type == "independent" then goto check_next_line end
+    -- line is top only
+    if line_type == "top" then goto check_next_line end
+    -- next line is independent
+    next_line_type = get_line_type(next_line)
+    if next_line_type == "independent" then goto check_next_line end
+    -- next line is bottom only
+    if next_line_type == "bottom" then goto check_next_line end
+
+    -- the lines can be joined, so join the lines
+    new_line = { line }
+
+    -- if a space needs to be appended to the end of the first line
+    if line:sub(#line) ~= " " then
+      new_line[1] = new_line[1] .. " "
     end
 
-    ::stop_match_search::
+    -- add the next line to new line
+    new_line[1] = new_line[1] .. next_line
 
-    -- if #line <= 80 then
-    --   -- line is short, check if it can be joined with next line
-    --   local next_linei = linei + 1
+    -- replace the line
+    vim.api.nvim_buf_set_lines(0, i-1, i+1, true, new_line)
 
-    --   -- out of bounds check
-    --   if next_linei > #lines then
-    --     goto check_next_line
-    --   end
+    -- recurse
+    if #new_line[1] > 80 then
+      burrito_check_wrap(i)
+    end
 
-    --   local next_line = lines[next_linei]
-
-    --   if next_line == nil or #next_line == 0 or is_non_wrapping(next_line) then
-    --     goto check_next_line
-    --   end
-
-    --   if line == nil or #line == 0 or is_whitespace(line:sub(1, 1)) then
-    --     goto check_next_line
-    --   end
-
-    --   -- the lines can be joined, so join the lines
-    --   new_line = { line }
-
-    --   -- if a space needs to be appended to the end of the first line
-    --   if not is_whitespace(line:sub(#line)) then
-    --     new_line[1] = new_line[1] .. " "
-    --   end
-
-    --   -- add the next line to new line
-    --   new_line[1] = new_line[1] .. next_line
-
-    --   -- replace the line
-    --   vim.api.nvim_buf_set_lines(0, i-1, i+1, true, new_line)
-
-    --   -- recurse
-    --   burrito_check_join(i)
-    --   if #new_line[1] > 80 then
-    --     burrito_check(i)
-    --   end
-    --   return
-    -- end
-
-    -- ::check_next_line::
+    ::check_next_line::
   end
+  ::early_return::
 end
 
 -- set the auto command to check the file for lines that need to be wrapped
 -- whenever the file is changed in insert mode
 vim.api.nvim_create_autocmd("TextChangedI", {
   pattern = "*.test",
-  callback = function() burrito_check(1) end
+  callback = function() burrito_check_wrap(1) end
 })
 
 -- set the auto command to check the file for lines that need to be wrapped
@@ -288,7 +294,7 @@ vim.api.nvim_create_autocmd("TextChangedI", {
 vim.api.nvim_create_autocmd("TextChanged", {
   pattern = "*.test",
   callback = function() 
-    burrito_check(1) 
+    burrito_check_wrap(1) 
     burrito_check_join(1)
   end
 })
@@ -302,6 +308,17 @@ vim.api.nvim_create_autocmd("InsertLeave", {
 
 -- make a user command if the wrapping somehow got outdated
 vim.api.nvim_create_user_command("Burrito", function() 
-  burrito_check(1) 
+  burrito_check_wrap(1) 
   burrito_check_join(1)
+end, {})
+
+vim.api.nvim_create_user_command("BurritoLineTypes", function()
+  start_line = 1
+  local lines = vim.api.nvim_buf_get_lines(0, start_line - 1, -1, false)
+
+  for i = start_line, #lines + start_line - 1 do
+    local linei = i - start_line + 1
+    local line = lines[linei]
+    print(linei .. ". " .. line .. " LINE TYPE: " .. get_line_type(line))
+  end
 end, {})
