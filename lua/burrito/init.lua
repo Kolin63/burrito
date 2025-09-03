@@ -204,7 +204,7 @@ function get_indent_amount(line_number)
   return { indent = indent, line = output_line }
 end
 
--- returns "normal", "independent", "top", or "bottom"
+-- returns "normal", "independent", or "bottom"
 function get_line_type(line_number)
   line = get_indent_amount(line_number).line
   for _, pattern in ipairs(independent_patterns) do
@@ -299,8 +299,6 @@ function burrito_check_join(start_line)
     -- line is independent
     line_type = get_line_type(linei)
     if line_type == "independent" then goto check_next_line end
-    -- line is top only
-    if line_type == "top" then goto check_next_line end
     -- next line is independent
     next_line_type = get_line_type(next_linei)
     if next_line_type == "independent" then goto check_next_line end
