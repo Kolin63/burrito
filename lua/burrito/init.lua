@@ -250,13 +250,14 @@ function burrito_check_wrap(start_line)
 
       ::split_line::
       new_lines[1] = line:sub(1, break_col)
-      new_lines[2] = line:sub(break_col + 1)
+      new_lines[2] = string.rep(" ", get_indent_amount(i).indent) 
+                      .. line:sub(break_col + 1)
 
       -- calculate new cursor position
       local cursor_pos = vim.api.nvim_win_get_cursor(0)
       if cursor_pos[2] >= 80 then
         cursor_pos[1] = cursor_pos[1] + 1
-        cursor_pos[2] = cursor_pos[2] - break_col + 1
+        cursor_pos[2] = get_indent_amount(i).indent + break_col + 1
       end
 
       -- replace long line with 80 character one and the new line
