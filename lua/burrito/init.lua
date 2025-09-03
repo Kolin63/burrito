@@ -26,21 +26,21 @@ end
 -- returns the part of the string that did not match the pattern
 function regex_string(input, pattern)
 
-  backslash = false
+  local backslash = false
 
-  surround = "" -- what is currently surrounding
+  local surround = "" -- what is currently surrounding
 
-  matching_chars = {} -- the char(s) that we are currently looking for
-  match_min = 0 -- minimum times to match the char (inclusive)
-  match_max = 0 -- maximum times to match the char (inclusive) -1 for infinite
+  local matching_chars = {} -- the char(s) that we are currently looking for
+  local match_min = 0 -- minimum times to match the char (inclusive)
+  local match_max = 0 -- maximum times to match the char (inclusive) -1 for infinite
 
-  quantifier_found = false
+  local quantifier_found = false
 
   for i = 1, #pattern, 1 do
 
-    char = pattern:sub(i, i)
+    local char = pattern:sub(i, i)
 
-    is_literal = false
+    local is_literal = false
     if backslash == true then is_literal = true end
     if surround == "[" and char ~= "]" then is_literal = true end
 
@@ -51,7 +51,6 @@ function regex_string(input, pattern)
       if i ~= 1 then
         print("BURRITO: ERROR: ^ anchor must be in first character")
       end
-      start_anchor = true
     elseif char == "$" and is_literal == false then
       if i ~= #pattern then
         print("BURRITO: ERROR: $ anchor must be in last character")
@@ -101,7 +100,7 @@ function regex_string(input, pattern)
       end
 
       -- if there is no quantifier following this char
-      next_char = pattern:sub(i + 1, i + 1)
+      local next_char = pattern:sub(i + 1, i + 1)
       if next_char ~= "^" and next_char ~= "$" and next_char ~= "*" 
         and next_char ~= "+" and next_char ~= "{" then
 
@@ -112,11 +111,11 @@ function regex_string(input, pattern)
     end
 
     if quantifier_found then
-      inputi = 1
-      chars_found = 0
+      local inputi = 1
+      local chars_found = 0
 
       while true do
-        inputchar = input:sub(inputi, inputi)
+        local inputchar = input:sub(inputi, inputi)
 
         for _, checkchar in ipairs(matching_chars) do
           if inputchar == checkchar then
@@ -170,9 +169,9 @@ end
 --      -dr. seuss
 -- get_indent_amount(4) would return 5
 function get_indent_amount(line_number)
-  lines = vim.api.nvim_buf_get_lines(0, 0, line_number, false)
-  indent = 0
-  output_line = ""
+  local lines = vim.api.nvim_buf_get_lines(0, 0, line_number, false)
+  local indent = 0
+  local output_line = ""
   for i, line in ipairs(lines) do
     -- remove whitespace from indentation
     for w = 1, indent do
@@ -185,10 +184,10 @@ function get_indent_amount(line_number)
     end
     ::stop_whitespace_check::
 
-    leftover = line
+    local leftover = line
     output_line = leftover
     repeat
-      match_made = false
+      local match_made = false
       for _, pattern in ipairs(bottom_only_patterns) do
         r = regex_string(leftover, pattern)
         if r.matched == true then
@@ -206,7 +205,7 @@ end
 
 -- returns "normal", "independent", or "bottom"
 function get_line_type(line_number)
-  line = get_indent_amount(line_number).line
+  local line = get_indent_amount(line_number).line
   for _, pattern in ipairs(independent_patterns) do
     if regex(line, pattern) == true then
       return "independent"
