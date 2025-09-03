@@ -12,19 +12,19 @@ independent_patterns = {
   "[|:]",                         -- Tables
 }
 
-list_patterns = {
+bottom_only_patterns = {
+  " {0,3}>",                      -- Block Quote
   " {0,3}[-+*] ",                 -- Bullet Lists
   " {0,3}[0123456789]{1,9}[.)] ", -- Ordered Lists
 }
 
-bottom_only_patterns = {
-  " {0,3}>",                      -- Block Quote
-  list_patterns[1],               -- Bullet Lists
-  list_patterns[2],               -- Ordered Lists
-}
-
 -- returns true if pattern was found
 function regex(input, pattern)
+  return regex_string(input, pattern).matched
+end
+
+-- returns the part of the string that did not match the pattern
+function regex_string(input, pattern)
 
   backslash = false
 
@@ -56,7 +56,7 @@ function regex(input, pattern)
       if i ~= #pattern then
         print("BURRITO: ERROR: $ anchor must be in last character")
       end
-      return #input == 0
+      return { matched = #input == 0, leftover = input }
 
     elseif char == "*" and is_literal == false then
       match_min = 0
@@ -140,7 +140,7 @@ function regex(input, pattern)
       if chars_found >= match_min then
         input = input:sub(chars_found + 1)
       else
-        return false
+        return { matched = false, leftover = input }
       end
 
       matching_chars = {}
@@ -152,11 +152,61 @@ function regex(input, pattern)
 
   end
 
-  return true
+  return { matched = true, leftover = input }
+end
+
+-- returns the amount of spaces that line line_number is indented because of
+-- any above list patterns.
+-- for example:
+-- 1. hello
+--    world
+-- get_indent_amount(2) would return 3, because "1. " is 3 characters long.
+-- in the same example, get_indent_amount(1) would also return 3 for the same
+-- reason.
+-- another example:
+-- 1. hello
+--    world
+--    > oh, the places you'll go
+--      -dr. seuss
+-- get_indent_amount(4) would return 5
+function get_indent_amount(line_number)
+  lines = vim.api.nvim_buf_get_lines(0, 0, line_number, false)
+  indent = 0
+  output_line = ""
+  for i, line in ipairs(lines) do
+    -- remove whitespace from indentation
+    for w = 1, indent do
+      if line:sub(1, 1) == " " then
+        line = line:sub(2)
+      else
+        indent = w - 1
+        goto stop_whitespace_check
+      end
+    end
+    ::stop_whitespace_check::
+
+    leftover = line
+    output_line = leftover
+    repeat
+      match_made = false
+      for _, pattern in ipairs(bottom_only_patterns) do
+        r = regex_string(leftover, pattern)
+        if r.matched == true then
+          leftover = r.leftover
+          match_made = true
+          goto check_again
+        end
+      end
+      ::check_again::
+    until match_made == false
+    indent = indent + #line - #leftover
+  end
+  return { indent = indent, line = output_line }
 end
 
 -- returns "normal", "independent", "top", or "bottom"
-function get_line_type(line)
+function get_line_type(line_number)
+  line = get_indent_amount(line_number).line
   for _, pattern in ipairs(independent_patterns) do
     if regex(line, pattern) == true then
       return "independent"
@@ -247,12 +297,12 @@ function burrito_check_join(start_line)
     -- line is long
     if #line > 80 then goto check_next_line end
     -- line is independent
-    line_type = get_line_type(line)
+    line_type = get_line_type(linei)
     if line_type == "independent" then goto check_next_line end
     -- line is top only
     if line_type == "top" then goto check_next_line end
     -- next line is independent
-    next_line_type = get_line_type(next_line)
+    next_line_type = get_line_type(next_linei)
     if next_line_type == "independent" then goto check_next_line end
     -- next line is bottom only
     if next_line_type == "bottom" then goto check_next_line end
@@ -318,6 +368,6 @@ vim.api.nvim_create_user_command("BurritoLineTypes", function()
   for i = start_line, #lines + start_line - 1 do
     local linei = i - start_line + 1
     local line = lines[linei]
-    print(linei .. ". " .. line .. " LINE TYPE: " .. get_line_type(line))
+    print(linei .. ".\t" .. get_line_type(linei):sub(1,1) .. get_indent_amount(linei).indent .. "\t" .. line)
   end
 end, {})
