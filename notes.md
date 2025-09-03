@@ -13,15 +13,6 @@ There are header-like lines that start with a #. These can be called
 There are also bullet-like lines that don't join with lines above, but do with 
 lines below. These are called "bottom only" lines. 
 
-There is also another type of bullet lines, which are the lines below the 
-actual bullet. For example:
-```
-* This is the first line of the bullet
-  But it still continues down here
-``` 
-These are called "top only" lines. Additionally, top only lines maintain 
-the same indentation level as the original bullet line.
-
 Finally, there are "normal lines" which wrap and join in any scenario.
 
 ## List 
@@ -35,9 +26,6 @@ This is the list of markdown symbols and what type of line they relate to.
 * A fenced code block. The content of the fenced code block is also
   independent. Don't wrap code!
 * All lines of a table
-
-### Top Only Lines
-* Lines after a list item line or block quote
 
 ### Bottom Only Lines
 * Block quote
