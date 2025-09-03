@@ -312,6 +312,11 @@ function burrito_check_join(start_line)
       new_line[1] = new_line[1] .. " "
     end
 
+    -- remove leading whitespace from next line
+    while next_line:sub(1, 1) == " " do
+      next_line = next_line:sub(2)
+    end
+
     -- add the next line to new line
     new_line[1] = new_line[1] .. next_line
 
