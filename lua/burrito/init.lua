@@ -296,10 +296,10 @@ function burrito_check_join(start_line)
     -- line is long
     if #line > 80 then goto check_next_line end
     -- line is independent
-    line_type = get_line_type(linei)
+    line_type = get_line_type(i)
     if line_type == "independent" then goto check_next_line end
     -- next line is independent
-    next_line_type = get_line_type(next_linei)
+    next_line_type = get_line_type(i + 1)
     if next_line_type == "independent" then goto check_next_line end
     -- next line is bottom only
     if next_line_type == "bottom" then goto check_next_line end
@@ -370,6 +370,6 @@ vim.api.nvim_create_user_command("BurritoLineTypes", function()
   for i = start_line, #lines + start_line - 1 do
     local linei = i - start_line + 1
     local line = lines[linei]
-    print(linei .. ".\t" .. get_line_type(linei):sub(1,1) .. get_indent_amount(linei).indent .. "\t" .. line)
+    print(i .. ".\t" .. get_line_type(i):sub(1,1) .. get_indent_amount(i).indent .. "\t" .. line)
   end
 end, {})
