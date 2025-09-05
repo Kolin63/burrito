@@ -274,24 +274,6 @@ function burrito_check_wrap(start_line)
   end
 end
 
--- returns first word of string. words are separated by spaces.
--- returns a table, with values word and leftover. leftover has leading
--- whitespace removed from it
-function get_first_word(input)
-  word = ""
-  for i = 1, #input do
-    char = input:sub(1, 1)
-    input = input:sub(2)
-    if char == " " then 
-      goto early_return
-    end
-    word = word .. char
-  end
-  ::early_return::
-  return { word = word, leftover = input }
-end
-
--- checks buffer for lines that need to be joined
 -- start_line: what line to start checking at
 function burrito_check_join(start_line)
   -- get all lines in buffer
@@ -323,32 +305,29 @@ function burrito_check_join(start_line)
     if next_line_type == "bottom" then goto check_next_line end
 
     -- the lines can be joined, so join the lines
-    local new_lines = { line, next_line }
 
-    while #new_lines[2] > 0 do
-      -- if a space needs to be appended to the end of the first line
-      if new_lines[1]:sub(#new_lines[1]) ~= " " then
-        new_lines[1] = new_lines[1] .. " "
-      end
-
-      -- remove leading whitespace from next line
-      while new_lines[2]:sub(1, 1) == " " do
-        new_lines[2] = new_lines[2]:sub(2)
-      end
-
-      -- add the first word of next line to new line
-      local first_word_data = get_first_word(new_lines[2])
-      local pot_new_line = new_lines[1] .. first_word_data.word
-
-      -- check if new line is long
-      if #pot_new_line > 80 then goto stop_joining end
-
-      new_lines[1] = pot_new_line
-      new_lines[2] = first_word_data.leftover
-
+    -- if a space needs to be appended to the end of the first line
+    if line:sub(#line) ~= " " then
+      line = line .. " "
     end
 
-    ::stop_joining::
+    -- remove leading whitespace from next line
+    while next_line:sub(1, 1) == " " do
+      next_line = next_line:sub(2)
+    end
+
+    -- calculate how much of next line can be added
+    break_col = 80 - #line
+    while next_line:sub(break_col, break_col) ~= " " and break_col ~= #next_line + 1 do
+      break_col = break_col - 1
+      if break_col <= 1 then goto check_next_line end
+    end
+
+    -- join the lines
+    local new_lines = {}
+    new_lines[1] = line .. next_line:sub(1, break_col)
+    new_lines[2] = next_line:sub(break_col + 1)
+    if new_lines[2] == "" then table.remove(new_lines, 2) end
 
     -- replace the line
     vim.api.nvim_buf_set_lines(0, i-1, i+1, false, new_lines)
