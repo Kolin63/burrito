@@ -255,7 +255,7 @@ function burrito_check_wrap(start_line)
 
       -- calculate new cursor position
       local cursor_pos = vim.api.nvim_win_get_cursor(0)
-      if cursor_pos[2] >= break_col then
+      if cursor_pos[1] == i and cursor_pos[2] >= break_col then
         cursor_pos[1] = cursor_pos[1] + 1
         cursor_pos[2] = get_indent_amount(i).indent + cursor_pos[2] - break_col
       end
@@ -322,7 +322,7 @@ function burrito_check_join(start_line)
       and break_col ~= #next_line do
 
       break_col = break_col - 1
-      if break_col <= 1 then goto check_next_line end
+      if break_col < 1 then goto check_next_line end
 
     end
 
@@ -338,7 +338,7 @@ function burrito_check_join(start_line)
       if cursor_pos[2] + 1 <= break_col then
         cursor_pos[1] = cursor_pos[1] - 1
         cursor_pos[2] = #line + #next_line + cursor_pos[2] - break_col + 1
-      elseif cursor_pos[2] + 1 > break_col then
+      else
         cursor_pos[2] = cursor_pos[2] - break_col
       end
     end
@@ -348,6 +348,10 @@ function burrito_check_join(start_line)
 
     -- update cursor position
     vim.api.nvim_win_set_cursor(0, cursor_pos)
+
+    -- recurse
+    burrito_check_join(i)
+    goto early_return
 
     ::check_next_line::
   end
