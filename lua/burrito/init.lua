@@ -319,7 +319,7 @@ function burrito_check_join(start_line)
     -- calculate how much of next line can be added
     break_col = 80 - #line
     while next_line:sub(break_col, break_col) ~= " "
-      and break_col ~= #next_line + 1 do
+      and break_col ~= #next_line do
 
       break_col = break_col - 1
       if break_col <= 1 then goto check_next_line end
