@@ -332,8 +332,22 @@ function burrito_check_join(start_line)
     new_lines[2] = next_line:sub(break_col + 1)
     if new_lines[2] == "" then table.remove(new_lines, 2) end
 
+    -- calculate new cursor position
+    local cursor_pos = vim.api.nvim_win_get_cursor(0)
+    if cursor_pos[1] == i + 1 then
+      if cursor_pos[2] + 1 <= break_col then
+        cursor_pos[1] = cursor_pos[1] - 1
+        cursor_pos[2] = #line + #next_line + cursor_pos[2] - break_col + 1
+      elseif cursor_pos[2] + 1 > break_col then
+        cursor_pos[2] = cursor_pos[2] - break_col
+      end
+    end
+
     -- replace the line
     vim.api.nvim_buf_set_lines(0, i-1, i+1, false, new_lines)
+
+    -- update cursor position
+    vim.api.nvim_win_set_cursor(0, cursor_pos)
 
     ::check_next_line::
   end
