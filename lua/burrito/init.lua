@@ -32,7 +32,7 @@ function regex_string(input, pattern)
 
   local matching_chars = {} -- the char(s) that we are currently looking for
   local match_min = 0 -- minimum times to match the char (inclusive)
-  local match_max = 0 -- maximum times to match the char (inclusive) -1 for infinite
+  local match_max = 0 -- maximum times to match the char (inclusive) -1 infinite
 
   local quantifier_found = false
 
@@ -318,9 +318,12 @@ function burrito_check_join(start_line)
 
     -- calculate how much of next line can be added
     break_col = 80 - #line
-    while next_line:sub(break_col, break_col) ~= " " and break_col ~= #next_line + 1 do
+    while next_line:sub(break_col, break_col) ~= " "
+      and break_col ~= #next_line + 1 do
+
       break_col = break_col - 1
       if break_col <= 1 then goto check_next_line end
+
     end
 
     -- join the lines
