@@ -274,6 +274,23 @@ function burrito_check_wrap(start_line)
   end
 end
 
+-- returns first word of string. words are separated by spaces.
+-- returns a table, with values word and leftover. leftover has leading
+-- whitespace removed from it
+function get_first_word(input)
+  word = ""
+  for i = 1, #input do
+    char = input:sub(1, 1)
+    input = input:sub(2)
+    if char == " " then 
+      goto early_return
+    end
+    word = word .. char
+  end
+  ::early_return::
+  return { word = word, leftover = input }
+end
+
 -- checks buffer for lines that need to be joined
 -- start_line: what line to start checking at
 function burrito_check_join(start_line)
@@ -288,7 +305,7 @@ function burrito_check_join(start_line)
 
     -- out of bounds check
     if next_linei > #lines then
-      goto check_next_line
+      goto early_return
     end
 
     local next_line = lines[next_linei]
@@ -306,28 +323,35 @@ function burrito_check_join(start_line)
     if next_line_type == "bottom" then goto check_next_line end
 
     -- the lines can be joined, so join the lines
-    new_line = { line }
+    local new_lines = { line, next_line }
 
-    -- if a space needs to be appended to the end of the first line
-    if line:sub(#line) ~= " " then
-      new_line[1] = new_line[1] .. " "
+    while #new_lines[2] > 0 do
+      -- if a space needs to be appended to the end of the first line
+      if new_lines[1]:sub(#new_lines[1]) ~= " " then
+        new_lines[1] = new_lines[1] .. " "
+      end
+
+      -- remove leading whitespace from next line
+      while new_lines[2]:sub(1, 1) == " " do
+        new_lines[2] = new_lines[2]:sub(2)
+      end
+
+      -- add the first word of next line to new line
+      local first_word_data = get_first_word(new_lines[2])
+      local pot_new_line = new_lines[1] .. first_word_data.word
+
+      -- check if new line is long
+      if #pot_new_line > 80 then goto stop_joining end
+
+      new_lines[1] = pot_new_line
+      new_lines[2] = first_word_data.leftover
+
     end
 
-    -- remove leading whitespace from next line
-    while next_line:sub(1, 1) == " " do
-      next_line = next_line:sub(2)
-    end
-
-    -- add the next line to new line
-    new_line[1] = new_line[1] .. next_line
+    ::stop_joining::
 
     -- replace the line
-    vim.api.nvim_buf_set_lines(0, i-1, i+1, true, new_line)
-
-    -- recurse
-    if #new_line[1] > 80 then
-      burrito_check_wrap(i)
-    end
+    vim.api.nvim_buf_set_lines(0, i-1, i+1, false, new_lines)
 
     ::check_next_line::
   end
