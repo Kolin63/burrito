@@ -383,14 +383,3 @@ vim.api.nvim_create_user_command("Burrito", function()
   burrito_check_wrap(1) 
   burrito_check_join(1)
 end, {})
-
-vim.api.nvim_create_user_command("BurritoLineTypes", function()
-  start_line = 1
-  local lines = vim.api.nvim_buf_get_lines(0, start_line - 1, -1, false)
-
-  for i = start_line, #lines + start_line - 1 do
-    local linei = i - start_line + 1
-    local line = lines[linei]
-    print(i .. ".\t" .. get_line_type(i):sub(1,1) .. get_indent_amount(i).indent .. "\t" .. line)
-  end
-end, {})
