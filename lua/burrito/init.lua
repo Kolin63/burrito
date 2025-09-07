@@ -5,9 +5,29 @@ local config = {
 
   file_types = { "*.md" },          -- What file types Burrito will check for
 
+  -- lines that wrap with no other lines
+  independent_patterns = {
+    " {0,3}\\* *\\* *\\*",          -- Thematic Breaks
+    " {0,3}- *- *-",                -- Thematic Breaks
+    " {0,3}_ *_ *_",                -- Thematic Breaks
+    " {0,3}-+ *$",                  -- Setext Heading Underline
+    " {0,3}=+ *$",                  -- Setext Heading Underline
+    " *$",                          -- All Whitespace
+    " {0,3}`{3}",                   -- Fenced Code Block
+    " {0,3}~{3}",                   -- Fenced Code Block
+  },
+
+  -- lines that wrap only with lines below
+  bottom_only_patterns = {
+    " {0,3}>",                      -- Block Quote
+    " {0,3}[-+*] ",                 -- Bullet Lists
+    " {0,3}[0123456789]{1,9}[.)] ", -- Ordered Lists
+  },
+
   -- lines that don't wrap at all, not even if it reaches col 80
   no_wrap_patterns = {
     " {0,3}#{1,6} ",                -- ATX Headings
+    " {4}",                         -- Indented Code Block
     "[|:]",                         -- Tables
   },
 
@@ -16,28 +36,6 @@ local config = {
     " {0,3}`{3}",                   -- Fenced Code Block
     " {0,3}~{3}",                   -- Fenced Code Block
   },
-
-  -- lines that wrap with no other lines
-  independent_patterns = {
-    " {0,3}\\* *\\* *\\*",          -- Thematic Breaks
-    " {0,3}- *- *-",                -- Thematic Breaks
-    " {0,3}_ *_ *_",                -- Thematic Breaks
-    " {0,3}#{1,6} ",                -- ATX Headings
-    " {0,3}-+ *$",                  -- Setext Heading Underline
-    " {0,3}=+ *$",                  -- Setext Heading Underline
-    " *$",                          -- All Whitespace
-    " {4}",                         -- Indented Code Block
-    " {0,3}`{3}",                   -- Fenced Code Block
-    " {0,3}~{3}",                   -- Fenced Code Block
-    "[|:]",                         -- Tables
-  },
-
-  -- lines that wrap only with lines below
-  bottom_only_patterns = {
-    " {0,3}>",                      -- Block Quote
-    " {0,3}[-+*] ",                 -- Bullet Lists
-    " {0,3}[0123456789]{1,9}[.)] ", -- Ordered Lists
-  }
 }
 
 -- returns true if pattern was found
@@ -225,24 +223,6 @@ function get_indent_amount(line_number)
   return { indent = indent, line = output_line }
 end
 
--- returns "normal", "independent", or "bottom"
-function get_line_type(line_number)
-  local line = get_indent_amount(line_number).line
-  for _, pattern in ipairs(config.independent_patterns) do
-    if regex(line, pattern) == true then
-      return "independent"
-    end
-  end
-
-  for _, pattern in ipairs(config.bottom_only_patterns) do
-    if regex(line, pattern) == true then
-      return "bottom"
-    end
-  end
-
-  return "normal"
-end
-
 -- returns true if given line is a no wrap line
 function is_no_wrap(line)
   for _, pattern in ipairs(config.no_wrap_patterns) do
@@ -268,6 +248,28 @@ function is_code_block(line_number)
   return status
 end
 
+-- returns "normal", "independent", "bottom", or "nowrap"
+function get_line_type(line_number)
+  local line = get_indent_amount(line_number).line
+  for _, pattern in ipairs(config.independent_patterns) do
+    if regex(line, pattern) == true then
+      return "independent"
+    end
+  end
+
+  for _, pattern in ipairs(config.bottom_only_patterns) do
+    if regex(line, pattern) == true then
+      return "bottom"
+    end
+  end
+
+  if is_no_wrap(line) or is_code_block(line_number) then
+    return "nowrap"
+  end
+
+  return "normal"
+end
+
 -- checks buffer for lines that need to be wrapped
 -- start_line: what line to start checking at
 function burrito_check_wrap(start_line)
@@ -282,9 +284,7 @@ function burrito_check_wrap(start_line)
     -- line is long
     if #line <= config.col then goto check_next_line end
     -- line is no wrap
-    if is_no_wrap(line) then goto check_next_line end
-    -- line is in code block
-    if is_code_block(i) then goto check_next_line end
+    if get_line_type(i) == "nowrap" then goto check_next_line end
 
     -- the line can be wrapped, so wrap the line
 
@@ -352,14 +352,15 @@ function burrito_check_join(start_line)
     if #line > config.col then goto check_next_line end
     -- line is independent
     line_type = get_line_type(i)
+    print(line .. " " .. line_type)
     if line_type == "independent" then goto check_next_line end
     -- line is no wrap
-    if is_no_wrap(line) then goto check_next_line end
-    -- line is in code block
-    if is_code_block(i) then goto check_next_line end
+    if line_type == "nowrap" then goto check_next_line end
     -- next line is independent
     next_line_type = get_line_type(i + 1)
     if next_line_type == "independent" then goto check_next_line end
+    -- next line is no wrap
+    if next_line_type == "nowrap" then goto check_next_line end
     -- next line is bottom only
     if next_line_type == "bottom" then goto check_next_line end
     -- cursor is on next line and insert mode
@@ -433,17 +434,17 @@ M.setup = function(setup)
   if setup.file_types ~= nil then
     config.file_types = setup.file_types
   end
-  if setup.no_wrap_patterns ~= nil then
-    config.no_wrap_patterns = setup.no_wrap_patterns
-  end
-  if setup.code_block_patterns ~= nil then
-    config.code_block_patterns = setup.code_block_patterns
-  end
   if setup.independent_patterns ~= nil then
     config.independent_patterns = setup.independent_patterns
   end
   if setup.bottom_only_patterns ~= nil then
     config.bottom_only_patterns = setup.bottom_only_patterns
+  end
+  if setup.no_wrap_patterns ~= nil then
+    config.no_wrap_patterns = setup.no_wrap_patterns
+  end
+  if setup.code_block_patterns ~= nil then
+    config.code_block_patterns = setup.code_block_patterns
   end
 
   local update_burrito = function()
