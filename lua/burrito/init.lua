@@ -231,6 +231,19 @@ function get_line_type(line_number)
   return "normal"
 end
 
+-- returns true if line line_number is in a fenced code block
+function is_code_block(line_number)
+  local pattern = " {0,3}`{3}"
+  local lines = vim.api.nvim_buf_get_lines(0, 0, line_number, false)
+  local status = false
+  for i, line in ipairs(lines) do
+    if regex(line, pattern) == true then
+      status = not status
+    end
+  end
+  return status
+end
+
 -- checks buffer for lines that need to be wrapped
 -- start_line: what line to start checking at
 function burrito_check_wrap(start_line)
@@ -244,6 +257,8 @@ function burrito_check_wrap(start_line)
     -- dont join with next line if:
     -- line is long
     if #line <= config.col then goto check_next_line end
+    -- line is in code block
+    if is_code_block(i) then goto check_next_line end
 
     -- the line can be wrapped, so wrap the line
 
@@ -312,6 +327,8 @@ function burrito_check_join(start_line)
     -- line is independent
     line_type = get_line_type(i)
     if line_type == "independent" then goto check_next_line end
+    -- line is in code block
+    if is_code_block(i) then goto check_next_line end
     -- next line is independent
     next_line_type = get_line_type(i + 1)
     if next_line_type == "independent" then goto check_next_line end
