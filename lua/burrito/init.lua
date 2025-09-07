@@ -391,31 +391,30 @@ M.setup = function(setup)
     config.bottom_only_patterns = setup.bottom_only_patterns
   end
 
+  local update_burrito = function()
+    burrito_check_wrap(1)
+    burrito_check_join(1)
+  end
+
   -- set the auto command to check the file for lines that need to be wrapped
   -- whenever the file is changed in insert mode
   vim.api.nvim_create_autocmd("TextChangedI", {
     pattern = config.file_types,
-    callback = function()
-      burrito_check_wrap(1)
-      burrito_check_join(1)
-    end
+    callback = update_burrito
   })
 
   -- set the auto command to check the file for lines that need to be wrapped
   -- whenever the file is changed out of insert mode
   vim.api.nvim_create_autocmd("TextChanged", {
     pattern = config.file_types,
-    callback = function()
-      burrito_check_wrap(1)
-      burrito_check_join(1)
-    end
+    callback = update_burrito
   })
 
   -- set the auto command to check the file for lines that need to be wrapped
   -- whenever insert mode is left
   vim.api.nvim_create_autocmd("InsertLeave", {
     pattern = config.file_types,
-    callback = function() burrito_check_join(1) end
+    callback = update_burrito
   })
 
   -- make a user command if the wrapping somehow got outdated
