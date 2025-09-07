@@ -241,47 +241,51 @@ function burrito_check_wrap(start_line)
     local linei = i - start_line + 1
     local line = lines[linei]
 
-    -- check line length for if it needs to be wrapped
-    if #line > config.col then
+    -- dont join with next line if:
+    -- line is long
+    if #line <= config.col then goto check_next_line end
 
-      -- split line into two 80-character lines
-      local new_lines = {}
+    -- the line can be wrapped, so wrap the line
 
-      -- the column at which the line is going to be broken
-      local break_col = config.col
+    -- split line into two 80-character lines
+    local new_lines = {}
 
-      -- smart wrapping with words
-      for col=config.col, 1, -1 do
-        if line:sub(col, col) == ' ' then
-          break_col = col
-          goto split_line
-        end
+    -- the column at which the line is going to be broken
+    local break_col = config.col
+
+    -- smart wrapping with words
+    for col=config.col, 1, -1 do
+      if line:sub(col, col) == ' ' then
+        break_col = col
+        goto split_line
       end
-
-      ::split_line::
-      new_lines[1] = line:sub(1, break_col)
-      new_lines[2] = string.rep(" ", get_indent_amount(i).indent) 
-      .. line:sub(break_col + 1)
-
-      -- calculate new cursor position
-      local cursor_pos = vim.api.nvim_win_get_cursor(0)
-      if cursor_pos[1] == i and cursor_pos[2] >= break_col then
-        cursor_pos[1] = cursor_pos[1] + 1
-        cursor_pos[2] = get_indent_amount(i).indent + cursor_pos[2] - break_col
-      end
-
-      -- replace long line with 80 character one and the new line
-      vim.api.nvim_buf_set_lines(0, i-1, i, true, new_lines)
-
-      -- change cursor position to the next line
-      vim.api.nvim_win_set_cursor(0, cursor_pos)
-
-      -- recurse
-      burrito_check_wrap(i + 1)
-      return
-
     end
+
+    ::split_line::
+    new_lines[1] = line:sub(1, break_col)
+    new_lines[2] = string.rep(" ", get_indent_amount(i).indent)
+    .. line:sub(break_col + 1)
+
+    -- calculate new cursor position
+    local cursor_pos = vim.api.nvim_win_get_cursor(0)
+    if cursor_pos[1] == i and cursor_pos[2] >= break_col then
+      cursor_pos[1] = cursor_pos[1] + 1
+      cursor_pos[2] = get_indent_amount(i).indent + cursor_pos[2] - break_col
+    end
+
+    -- replace long line with 80 character one and the new line
+    vim.api.nvim_buf_set_lines(0, i-1, i, true, new_lines)
+
+    -- change cursor position to the next line
+    vim.api.nvim_win_set_cursor(0, cursor_pos)
+
+    -- recurse
+    burrito_check_wrap(i + 1)
+    goto early_return
+
+    ::check_next_line::
   end
+  ::early_return::
 end
 
 -- start_line: what line to start checking at
