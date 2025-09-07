@@ -313,6 +313,10 @@ function burrito_check_join(start_line)
     if next_line_type == "independent" then goto check_next_line end
     -- next line is bottom only
     if next_line_type == "bottom" then goto check_next_line end
+    -- cursor is on next line and insert mode
+    if vim.api.nvim_get_mode().mode == "i"
+      and vim.api.nvim_win_get_cursor(0)[1] == i + 1 then
+      goto check_next_line end
 
     -- the lines can be joined, so join the lines
 
@@ -357,6 +361,10 @@ function burrito_check_join(start_line)
     vim.api.nvim_buf_set_lines(0, i-1, i+1, false, new_lines)
 
     -- update cursor position
+    local new_length = #vim.api.nvim_buf_get_lines(0, start_line - 1, -1, false)
+    if cursor_pos[1] > new_length then
+      cursor_pos[1] = new_length
+    end
     vim.api.nvim_win_set_cursor(0, cursor_pos)
 
     -- recurse
@@ -387,7 +395,10 @@ M.setup = function(setup)
   -- whenever the file is changed in insert mode
   vim.api.nvim_create_autocmd("TextChangedI", {
     pattern = config.file_types,
-    callback = function() burrito_check_wrap(1) end
+    callback = function()
+      burrito_check_wrap(1)
+      burrito_check_join(1)
+    end
   })
 
   -- set the auto command to check the file for lines that need to be wrapped
