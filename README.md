@@ -10,7 +10,7 @@ separate.
 
 ## 📦 Installation
 Default configuration, using Lazy:
-```
+```lua
 return {
   "kolin63/burrito",
 
@@ -75,7 +75,7 @@ it includes:
 * $ for end of line
 * {x} for amount of matches
 * {x,y} for range of matches
-* [] for multiple characters
-* * for 0 or more of
-* + for 1 or more of
+* [xyz] for multiple characters
+* \* for 0 or more of
+* \+ for 1 or more of
 * \ as an escape character
