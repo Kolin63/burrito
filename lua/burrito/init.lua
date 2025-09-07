@@ -352,7 +352,6 @@ function burrito_check_join(start_line)
     if #line > config.col then goto check_next_line end
     -- line is independent
     line_type = get_line_type(i)
-    print(line .. " " .. line_type)
     if line_type == "independent" then goto check_next_line end
     -- line is no wrap
     if line_type == "nowrap" then goto check_next_line end
