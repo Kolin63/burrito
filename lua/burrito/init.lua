@@ -5,6 +5,12 @@ local config = {
 
   file_types = { "*.md" },          -- What file types Burrito will check for
 
+  -- lines that don't wrap at all, not even if it reaches col 80
+  no_wrap_patterns = {
+    " {0,3}#{1,6} ",                -- ATX Headings
+    "[|:]",                         -- Tables
+  },
+
   -- lines that surround lines that don't wrap at all
   code_block_patterns = {
     " {0,3}`{3}",                   -- Fenced Code Block
@@ -237,6 +243,16 @@ function get_line_type(line_number)
   return "normal"
 end
 
+-- returns true if given line is a no wrap line
+function is_no_wrap(line)
+  for _, pattern in ipairs(config.no_wrap_patterns) do
+    if regex(line, pattern) == true then
+      return true
+    end
+  end
+  return false
+end
+
 -- returns true if line line_number is in a fenced code block
 function is_code_block(line_number)
   local lines = vim.api.nvim_buf_get_lines(0, 0, line_number, false)
@@ -265,6 +281,8 @@ function burrito_check_wrap(start_line)
     -- dont join with next line if:
     -- line is long
     if #line <= config.col then goto check_next_line end
+    -- line is no wrap
+    if is_no_wrap(line) then goto check_next_line end
     -- line is in code block
     if is_code_block(i) then goto check_next_line end
 
@@ -335,6 +353,8 @@ function burrito_check_join(start_line)
     -- line is independent
     line_type = get_line_type(i)
     if line_type == "independent" then goto check_next_line end
+    -- line is no wrap
+    if is_no_wrap(line) then goto check_next_line end
     -- line is in code block
     if is_code_block(i) then goto check_next_line end
     -- next line is independent
@@ -412,6 +432,9 @@ M.setup = function(setup)
   end
   if setup.file_types ~= nil then
     config.file_types = setup.file_types
+  end
+  if setup.no_wrap_patterns ~= nil then
+    config.no_wrap_patterns = setup.no_wrap_patterns
   end
   if setup.code_block_patterns ~= nil then
     config.code_block_patterns = setup.code_block_patterns
