@@ -1,21 +1,31 @@
-independent_patterns = { 
-  " {0,3}\\* *\\* *\\*",          -- Thematic Breaks
-  " {0,3}- *- *-",                -- Thematic Breaks
-  " {0,3}_ *_ *_",                -- Thematic Breaks
-  " {0,3}#{1,6} ",                -- ATX Headings
-  " {0,3}-+ *$",                  -- Setext Heading Underline
-  " {0,3}=+ *$",                  -- Setext Heading Underline
-  " *$",                          -- All Whitespace
-  " {4}",                         -- Indented Code Block
-  " {0,3}`{3}",                   -- Fenced Code Block
-  " {0,3}~{3}",                   -- Fenced Code Block
-  "[|:]",                         -- Tables
-}
+local M = {}
 
-bottom_only_patterns = {
-  " {0,3}>",                      -- Block Quote
-  " {0,3}[-+*] ",                 -- Bullet Lists
-  " {0,3}[0123456789]{1,9}[.)] ", -- Ordered Lists
+local config = {
+  col = 80,                         -- The column to wrap text at
+
+  file_types = { "*.md" },          -- What file types Burrito will check for
+
+  -- lines that wrap with no other lines
+  independent_patterns = {
+    " {0,3}\\* *\\* *\\*",          -- Thematic Breaks
+    " {0,3}- *- *-",                -- Thematic Breaks
+    " {0,3}_ *_ *_",                -- Thematic Breaks
+    " {0,3}#{1,6} ",                -- ATX Headings
+    " {0,3}-+ *$",                  -- Setext Heading Underline
+    " {0,3}=+ *$",                  -- Setext Heading Underline
+    " *$",                          -- All Whitespace
+    " {4}",                         -- Indented Code Block
+    " {0,3}`{3}",                   -- Fenced Code Block
+    " {0,3}~{3}",                   -- Fenced Code Block
+    "[|:]",                         -- Tables
+  },
+
+  -- lines that wrap only with lines below
+  bottom_only_patterns = {
+    " {0,3}>",                      -- Block Quote
+    " {0,3}[-+*] ",                 -- Bullet Lists
+    " {0,3}[0123456789]{1,9}[.)] ", -- Ordered Lists
+  }
 }
 
 -- returns true if pattern was found
@@ -188,7 +198,7 @@ function get_indent_amount(line_number)
     output_line = leftover
     repeat
       local match_made = false
-      for _, pattern in ipairs(bottom_only_patterns) do
+      for _, pattern in ipairs(config.bottom_only_patterns) do
         r = regex_string(leftover, pattern)
         if r.matched == true then
           leftover = r.leftover
@@ -206,13 +216,13 @@ end
 -- returns "normal", "independent", or "bottom"
 function get_line_type(line_number)
   local line = get_indent_amount(line_number).line
-  for _, pattern in ipairs(independent_patterns) do
+  for _, pattern in ipairs(config.independent_patterns) do
     if regex(line, pattern) == true then
       return "independent"
     end
   end
 
-  for _, pattern in ipairs(bottom_only_patterns) do
+  for _, pattern in ipairs(config.bottom_only_patterns) do
     if regex(line, pattern) == true then
       return "bottom"
     end
@@ -232,16 +242,16 @@ function burrito_check_wrap(start_line)
     local line = lines[linei]
 
     -- check line length for if it needs to be wrapped
-    if #line > 80 then
+    if #line > config.col then
 
       -- split line into two 80-character lines
       local new_lines = {}
 
       -- the column at which the line is going to be broken
-      local break_col = 80
+      local break_col = config.col
 
       -- smart wrapping with words
-      for col=80, 1, -1 do
+      for col=config.col, 1, -1 do
         if line:sub(col, col) == ' ' then
           break_col = col
           goto split_line
@@ -294,7 +304,7 @@ function burrito_check_join(start_line)
 
     -- dont join with next line if:
     -- line is long
-    if #line > 80 then goto check_next_line end
+    if #line > config.col then goto check_next_line end
     -- line is independent
     line_type = get_line_type(i)
     if line_type == "independent" then goto check_next_line end
@@ -317,7 +327,7 @@ function burrito_check_join(start_line)
     end
 
     -- calculate how much of next line can be added
-    break_col = 80 - #line
+    break_col = config.col - #line
     while next_line:sub(break_col, break_col) ~= " "
       and break_col ~= #next_line do
 
@@ -358,32 +368,52 @@ function burrito_check_join(start_line)
   ::early_return::
 end
 
--- set the auto command to check the file for lines that need to be wrapped
--- whenever the file is changed in insert mode
-vim.api.nvim_create_autocmd("TextChangedI", {
-  pattern = "*.test",
-  callback = function() burrito_check_wrap(1) end
-})
-
--- set the auto command to check the file for lines that need to be wrapped
--- whenever the file is changed out of insert mode
-vim.api.nvim_create_autocmd("TextChanged", {
-  pattern = "*.test",
-  callback = function() 
-    burrito_check_wrap(1) 
-    burrito_check_join(1)
+-- config
+M.setup = function(setup)
+  if setup.col ~= nil then
+    config.col = setup.col
   end
-})
+  if setup.file_types ~= nil then
+    config.file_types = setup.file_types
+  end
+  if setup.independent_patterns ~= nil then
+    config.independent_patterns = setup.independent_patterns
+  end
+  if setup.bottom_only_patterns ~= nil then
+    config.bottom_only_patterns = setup.bottom_only_patterns
+  end
 
--- set the auto command to check the file for lines that need to be wrapped
--- whenever insert mode is left
-vim.api.nvim_create_autocmd("InsertLeave", {
-  pattern = "*.test",
-  callback = function() burrito_check_join(1) end
-})
+  -- set the auto command to check the file for lines that need to be wrapped
+  -- whenever the file is changed in insert mode
+  vim.api.nvim_create_autocmd("TextChangedI", {
+    pattern = config.file_types,
+    callback = function() burrito_check_wrap(1) end
+  })
 
--- make a user command if the wrapping somehow got outdated
-vim.api.nvim_create_user_command("Burrito", function() 
-  burrito_check_wrap(1) 
-  burrito_check_join(1)
-end, {})
+  -- set the auto command to check the file for lines that need to be wrapped
+  -- whenever the file is changed out of insert mode
+  vim.api.nvim_create_autocmd("TextChanged", {
+    pattern = config.file_types,
+    callback = function()
+      burrito_check_wrap(1)
+      burrito_check_join(1)
+    end
+  })
+
+  -- set the auto command to check the file for lines that need to be wrapped
+  -- whenever insert mode is left
+  vim.api.nvim_create_autocmd("InsertLeave", {
+    pattern = config.file_types,
+    callback = function() burrito_check_join(1) end
+  })
+
+  -- make a user command if the wrapping somehow got outdated
+  vim.api.nvim_create_user_command("Burrito", function()
+    print("Running Burrito...")
+    burrito_check_wrap(1)
+    burrito_check_join(1)
+  end, {})
+
+end
+
+return M
