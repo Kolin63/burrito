@@ -251,7 +251,7 @@ function burrito_check_wrap(start_line)
       ::split_line::
       new_lines[1] = line:sub(1, break_col)
       new_lines[2] = string.rep(" ", get_indent_amount(i).indent) 
-                      .. line:sub(break_col + 1)
+      .. line:sub(break_col + 1)
 
       -- calculate new cursor position
       local cursor_pos = vim.api.nvim_win_get_cursor(0)
