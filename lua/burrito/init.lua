@@ -5,6 +5,12 @@ local config = {
 
   file_types = { "*.md" },          -- What file types Burrito will check for
 
+  -- lines that surround lines that don't wrap at all
+  code_block_patterns = {
+    " {0,3}`{3}",                   -- Fenced Code Block
+    " {0,3}~{3}",                   -- Fenced Code Block
+  },
+
   -- lines that wrap with no other lines
   independent_patterns = {
     " {0,3}\\* *\\* *\\*",          -- Thematic Breaks
@@ -233,13 +239,15 @@ end
 
 -- returns true if line line_number is in a fenced code block
 function is_code_block(line_number)
-  local pattern = " {0,3}`{3}"
   local lines = vim.api.nvim_buf_get_lines(0, 0, line_number, false)
-  local status = false
-  for i, line in ipairs(lines) do
-    if regex(line, pattern) == true then
-      status = not status
+  for _, pattern in ipairs(config.code_block_patterns) do
+    local status = false
+    for i, line in ipairs(lines) do
+      if regex(line, pattern) == true then
+        status = not status
+      end
     end
+    if status  == true then return status end
   end
   return status
 end
@@ -404,6 +412,9 @@ M.setup = function(setup)
   end
   if setup.file_types ~= nil then
     config.file_types = setup.file_types
+  end
+  if setup.code_block_patterns ~= nil then
+    config.code_block_patterns = setup.code_block_patterns
   end
   if setup.independent_patterns ~= nil then
     config.independent_patterns = setup.independent_patterns
