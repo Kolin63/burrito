@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: MIT
+-- Copyright (c) Colin Melican 2025
+
 local M = {}
 
 local regex = require("burrito/regex").regex

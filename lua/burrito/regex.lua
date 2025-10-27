@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: MIT
+-- Copyright (c) Colin Melican 2025
+
 local M = {}
 
 -- returns the part of the string that did not match the pattern
