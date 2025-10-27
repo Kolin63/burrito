@@ -18,6 +18,16 @@ return {
     require("burrito").setup({
       col = 80,                         -- The column to wrap text at
 
+      range = 1,                        -- Amount of lines that will be checked
+                                        -- above and below the cursor. The :Burrito
+                                        -- command will check whole file. Set this
+                                        -- value to -1 to always check whole file.
+
+      check_whole_paragraph = true,     -- If the entire paragraph should be checked
+                                        -- rather than stopping at the end of the
+                                        -- range.
+
+
       file_types = { "*.md" },          -- What file types Burrito will check for
 
       -- lines that wrap with no other lines

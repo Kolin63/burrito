@@ -6,6 +6,15 @@ local M = {}
 local config = {
   col = 80,                         -- The column to wrap text at
 
+  range = 1,                        -- Amount of lines that will be checked
+                                    -- above and below the cursor. The :Burrito
+                                    -- command will check whole file. Set this
+                                    -- value to -1 to always check whole file.
+
+  check_whole_paragraph = true,     -- If the entire paragraph should be checked
+                                    -- rather than stopping at the end of the
+                                    -- range.
+
   file_types = { "*.md" },          -- What file types Burrito will check for
 
   -- lines that wrap with no other lines
@@ -46,6 +55,12 @@ M.set = function(x) config = x end
 
 M.get_col = function() return config.col end
 M.set_col = function(x) config.col = x end
+
+M.get_range = function() return config.range end
+M.set_range = function(x) config.range = x end
+
+M.get_check_whole_paragraph = function() return config.check_whole_paragraph end
+M.set_check_whole_paragraph = function(x) config.check_whole_paragraph = x end
 
 M.get_file_types = function() return config.file_types end
 M.set_file_types = function(x) config.file_types = x end

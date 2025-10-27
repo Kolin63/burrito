@@ -13,6 +13,12 @@ M.setup = function(setup)
   if setup.col ~= nil then
     config.set_col(setup.col)
   end
+  if setup.range ~= nil then
+    config.set_range(setup.range)
+  end
+  if setup.check_whole_paragraph ~= nil then
+    config.set_check_whole_paragraph(setup.check_whole_paragraph)
+  end
   if setup.file_types ~= nil then
     config.set_file_types(setup.file_types)
   end
@@ -30,8 +36,12 @@ M.setup = function(setup)
   end
 
   local update_burrito = function()
-    burrito_check_wrap(1)
-    burrito_check_join(1)
+    local pos = vim.api.nvim_win_get_cursor(0)[1]
+    local start_line = math.max(pos - config.get_range(), 1)
+    local end_line = pos + config.get_range() + 1
+    if config.get_check_whole_paragraph() then end_line = -2 end
+    burrito_check_wrap(start_line, end_line)
+    burrito_check_join(start_line, end_line)
   end
 
   -- set the auto command to check the file for lines that need to be wrapped
@@ -58,8 +68,8 @@ M.setup = function(setup)
   -- make a user command if the wrapping somehow got outdated
   vim.api.nvim_create_user_command("Burrito", function()
     print("Running Burrito...")
-    burrito_check_wrap(1)
-    burrito_check_join(1)
+    burrito_check_wrap(1, -1)
+    burrito_check_join(1, -1)
   end, {})
 
 end
