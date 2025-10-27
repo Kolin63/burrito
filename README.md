@@ -1,9 +1,9 @@
 # 🌯 Burrito
-Burrito is a Neovim plugin that makes text wrapping better. What sets Burrito 
-apart from settings like `:set wrap` or `:set col` is that when Burrito wraps, 
-it creates a new line rather than only graphically rendering a new line. 
-Additionally, Burrito is smart with Markdown syntax, and won't join lines that 
-shouldn't be joined. For example, two lines in a bullet list will be kept 
+Burrito is a Neovim plugin that makes text wrapping better. What sets Burrito
+apart from settings like `:set wrap` or `:set col` is that when Burrito wraps,
+it creates a new line rather than only graphically rendering a new line.
+Additionally, Burrito is smart with Markdown syntax, and won't join lines that
+shouldn't be joined. For example, two lines in a bullet list will be kept
 separate.
 
 ![demo](demo.gif)
@@ -57,19 +57,19 @@ return {
 ```
 
 ## ⚙️ Configuration
-If you are trying to add new regex patterns for different types of lines, there 
-are a few things to keep in mind. 
+If you are trying to add new regex patterns for different types of lines, there
+are a few things to keep in mind.
 ### 📄 Types of Lines
 * **Independent Lines** don't join with lines above or below.
 * **Bottom Only Lines** don't join with lines above, but do with lines below.
-* **No Wrap Lines** are like independent lines, but don't wrap even if the 
+* **No Wrap Lines** are like independent lines, but don't wrap even if the
   column limit is reached
-  * **Code Block Lines** denote a range of no wrap lines. Keep in mind that if 
-    you want the actual code block symbols to be independent, they must be 
+  * **Code Block Lines** denote a range of no wrap lines. Keep in mind that if
+    you want the actual code block symbols to be independent, they must be
     defined again in the independent patterns list.
 ### 💻 Regex
-Since Lua does not ship with Regex searching, Burrito implements its own 
-Regex-like system. However, it is not a complete implementation. Here is what 
+Since Lua does not ship with Regex searching, Burrito implements its own
+Regex-like system. However, it is not a complete implementation. Here is what
 it includes:
 * Every line is parsed as if it started with a ^
 * $ for end of line
